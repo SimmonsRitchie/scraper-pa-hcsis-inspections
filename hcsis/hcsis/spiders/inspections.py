@@ -45,8 +45,7 @@ class InspectionsSpider(scrapy.Spider):
 
     def parse_cert_page(self,response):
         page = response.meta.get('cert_page_count')
-        item = response.meta.get('item')
-        print(f">>>>>>>>>>> PROCESSING... {item['provider_name']}, ID: {item['provider_id']}")
+
         print(f'~~~~~~~~~ PAGE: {page}')
         location_rows = response.css('td:nth-child(4) a')
         location_rows = [location_row for location_row in location_rows if not location_row.css('::attr('
@@ -57,11 +56,13 @@ class InspectionsSpider(scrapy.Spider):
 
         if location_rows:
             for location in location_rows:
+                item = response.meta.get('item')
+                print(f">>>>>>>>>>> PROCESSING... {item['provider_name']}, ID: {item['provider_id']}")
+
                 service_location = location.css('::text').extract_first()
                 service_location_id = location.css('::attr(href)').re_first('\d+$')
                 print('~~~~~~~~~~~~~~~~~~~~~~~~~')
                 print(f"           Processing service location: {service_location} {service_location_id}")
-                # TODO: Fix glitch, where these two fields aren't updating for each item
                 item['service_location'] = service_location
                 item['service_location_id'] = service_location_id
 
@@ -71,8 +72,17 @@ class InspectionsSpider(scrapy.Spider):
                     yield response.follow(location_inspection_page, callback=self.parse_inspection_page,
                                           meta={'item':item})
 
+            if pagination:
+                if page != int(pagination[-1]):
+                    print('~~~~~~ more pages detected... ')
+                    page += 1
+                    yield FormRequest.from_response(response, formdata={
+                        '__EVENTTARGET': 'ctl00$SSDPageContent$grdCertifiedServiceLocations',
+                        '__EVENTARGUMENT': f'Page${page}',
+                    }, callback=self.parse_cert_page, meta={'item': item, 'cert_page_count': page})
 
         else:
+            print('~~~~~~~~~~~~~~~~~~~~~~~~')
             print(f"No certified locations found for {item['provider_name']} {item['provider_id']}")
             item['service_location'] = "No certified locations"
             list_of_vals = ["service_location_id","inspection_id", "inspection_reason", "inspection_date",
@@ -82,14 +92,7 @@ class InspectionsSpider(scrapy.Spider):
                 item[item_key] = None
             yield item
 
-        if pagination:
-            if page != int(pagination[-1]):
-                print('~~~~~~ more pages detected... ')
-                page += 1
-                yield FormRequest.from_response(response, formdata={
-                    '__EVENTTARGET': 'ctl00$SSDPageContent$grdCertifiedServiceLocations',
-                    '__EVENTARGUMENT': f'Page${page}',
-                }, callback=self.parse_cert_page, meta={'item': item, 'cert_page_count': page})
+
 
 
     def parse_inspection_page(self, response):
