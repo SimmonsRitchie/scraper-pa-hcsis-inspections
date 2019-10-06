@@ -9,6 +9,11 @@
 #     https://docs.scrapy.org/en/latest/topics/downloader-middleware.html
 #     https://docs.scrapy.org/en/latest/topics/spider-middleware.html
 
+import logging
+from logging.handlers import RotatingFileHandler
+from logging import StreamHandler
+from scrapy.utils.log import configure_logging
+
 BOT_NAME = 'hcsis'
 
 SPIDER_MODULES = ['hcsis.spiders']
@@ -22,7 +27,7 @@ NEWSPIDER_MODULE = 'hcsis.spiders'
 ROBOTSTXT_OBEY = False
 
 # Configure maximum concurrent requests performed by Scrapy (default: 16)
-CONCURRENT_REQUESTS = 1
+# CONCURRENT_REQUESTS = 1
 
 # Configure a delay for requests for the same website (default: 0)
 # See https://docs.scrapy.org/en/latest/topics/settings.html#download-delay
@@ -88,3 +93,34 @@ ITEM_PIPELINES = {
 #HTTPCACHE_DIR = 'httpcache'
 #HTTPCACHE_IGNORE_HTTP_CODES = []
 #HTTPCACHE_STORAGE = 'scrapy.extensions.httpcache.FilesystemCacheStorage'
+
+
+# Disable default Scrapy log settings.
+LOG_ENABLED = False
+configure_logging(install_root_handler=False)
+
+# CUSTOM LOGGING SETTINGS.
+# root logger
+root_logger = logging.getLogger()
+root_logger.setLevel(logging.DEBUG)
+
+# formatter
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+# rotating file handler
+log_file1 = '/logs/CRAWLER_debug.log'
+rotating_file_log = RotatingFileHandler(log_file1, mode='w')
+rotating_file_log.setLevel(logging.DEBUG)
+rotating_file_log.setFormatter(formatter)
+root_logger.addHandler(rotating_file_log)
+
+# rotating file handler
+log_file2 = '/logs/CRAWLER_error.log'
+rotating_file_log = RotatingFileHandler(log_file2, mode='w')
+rotating_file_log.setLevel(logging.ERROR)
+rotating_file_log.setFormatter(formatter)
+root_logger.addHandler(rotating_file_log)
+
+# stream handler
+stream_log = StreamHandler()
+root_logger.addHandler(stream_log)
