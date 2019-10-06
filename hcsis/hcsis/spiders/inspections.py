@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 import scrapy
 from ..items import HcsisItem
+
 import string
 import re
 from scrapy.http import FormRequest
@@ -15,7 +16,7 @@ class InspectionsSpider(scrapy.Spider):
 
         provider_rows = response.css('blockquote td.BodyText')
         provider_list = [row.css('td a::text').extract_first() for row in provider_rows]
-        print(f"PROVIDER LIST: {provider_list}")
+        self.log(f"PROVIDER LIST: {provider_list}")
 
         for count, row in enumerate(provider_rows):
             # For testing purposes - delete this later
@@ -33,7 +34,7 @@ class InspectionsSpider(scrapy.Spider):
                 yield response.follow(provider_cert_page, callback=self.parse_cert_page, meta={'item': item,
                                                                                                'cert_page_count': 1})
             else:
-                print(f">>>>>>>>>>>> No provider ID found for name: {provider_name}, id: {provider_id}")
+                self.log(f">>>>>>>>>>>> No provider ID found for name: {provider_name}, id: {provider_id}")
 
         next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
             f'?alphabet={InspectionsSpider.ALPHABET[InspectionsSpider.page_count]}'
@@ -46,8 +47,8 @@ class InspectionsSpider(scrapy.Spider):
     def parse_cert_page(self,response):
         page = response.meta.get('cert_page_count')
         item = response.meta.get('item')
-        print(f">>>>>>>>>>> PROCESSING... {item['provider_name']}, ID: {item['provider_id']}")
-        print(f'~~~~~~~~~ PAGE: {page}')
+        self.log(f">>>>>>>>>>> PROCESSING... {item['provider_name']}, ID: {item['provider_id']}")
+        self.log(f'~~~~~~~~~ PAGE: {page}')
         location_rows = response.css('td:nth-child(4) a')
         location_rows = [location_row for location_row in location_rows if not location_row.css('::attr('
                                                                                             'href)').re_first(
@@ -60,8 +61,8 @@ class InspectionsSpider(scrapy.Spider):
 
                 service_location = location.css('::text').extract_first()
                 service_location_id = location.css('::attr(href)').re_first('\d+$')
-                print('~~~~~~~~~~~~~~~~~~~~~~~~~')
-                print(f"           Processing service location: {service_location} {service_location_id}")
+                self.log('~~~~~~~~~~~~~~~~~~~~~~~~~')
+                self.log(f"           Processing service location: {service_location} {service_location_id}")
                 # item['service_location'] = service_location
                 # item['service_location_id'] = service_location_id
 
@@ -74,18 +75,9 @@ class InspectionsSpider(scrapy.Spider):
                                                 'service_location_id': service_location_id
                                                 })
 
-            if pagination:
-                if page != int(pagination[-1]):
-                    print('~~~~~~ more pages detected... ')
-                    page += 1
-                    yield FormRequest.from_response(response, formdata={
-                        '__EVENTTARGET': 'ctl00$SSDPageContent$grdCertifiedServiceLocations',
-                        '__EVENTARGUMENT': f'Page${page}',
-                    }, callback=self.parse_cert_page, meta={'item': item, 'cert_page_count': page})
-
         else:
-            print('~~~~~~~~~~~~~~~~~~~~~~~~')
-            print(f"No certified locations found for {item['provider_name']} {item['provider_id']}")
+            self.log('~~~~~~~~~~~~~~~~~~~~~~~~')
+            self.log(f"No certified locations found for {item['provider_name']} {item['provider_id']}")
             item['service_location'] = "No certified locations"
             list_of_vals = ["service_location_id","inspection_id", "inspection_reason", "inspection_date",
                             "inspection_status", "regulation", "non_compliance_area", "correction_required", "plans_of_correction",
@@ -94,7 +86,14 @@ class InspectionsSpider(scrapy.Spider):
                 item[item_key] = None
             yield item
 
-
+        if pagination:
+            if page != int(pagination[-1]):
+                self.log('~~~~~~ more pages detected... ')
+                page += 1
+                yield FormRequest.from_response(response, formdata={
+                    '__EVENTTARGET': 'ctl00$SSDPageContent$grdCertifiedServiceLocations',
+                    '__EVENTARGUMENT': f'Page${page}',
+                }, callback=self.parse_cert_page, meta={'item': item, 'cert_page_count': page})
 
 
     def parse_inspection_page(self, response):
@@ -104,21 +103,21 @@ class InspectionsSpider(scrapy.Spider):
         item['service_location_id'] = response.meta.get('service_location_id')
 
         rows = response.css('form div div table#grdInspections > tr')
-        # print(response.css('html').extract())
+        # self.log(response.css('html').extract())
         if rows:
             rows = rows[1:] # remove col headers
-            print(f"LENGTH OF ROWS: {len(rows)}")
+            self.log(f"LENGTH OF ROWS: {len(rows)}")
             for count, row in enumerate(rows):
-                print(f"ROW {count}")
-                print(f"Column count: {len(row.css('tr > td').extract())}")
+                self.log(f"ROW {count}")
+                self.log(f"Column count: {len(row.css('tr > td').extract())}")
                 if row.css('div table'):
                     # if the row is an inspection grid then do nothing because it will have already been saved in
                     # prior loop iteration
-                    print("Contains inspection grid, moving on...")
+                    self.log("Contains inspection grid, moving on...")
                     continue
                 else:
                     # Save meta inspection info
-                    print("Saving inspection meta data...")
+                    self.log("Saving inspection meta data...")
                     inspection_id = row.css('td:nth-child(1) span::text').extract_first()
                     inspection_reason = row.css('td:nth-child(2) span::text').extract_first()
                     inspection_date = row.css('td:nth-child(3) span::text').extract_first()
@@ -127,22 +126,21 @@ class InspectionsSpider(scrapy.Spider):
                     item['inspection_reason'] = inspection_reason
                     item['inspection_date'] = inspection_date
                     item['inspection_status'] = inspection_status
-                if count < (len(rows) - 1):
-                    if rows[count + 1].css('div table'):
-                        print("Next row has inspection grid, saving inspection data...")
-                        inspection_grid_rows = rows[count + 1].css('div table tr')
-                        # loop over all rows except col headers
-                        for i_row in inspection_grid_rows[1:]:
-                            # save inspection data
-                            item['regulation'] = i_row.css('td:nth-child(1)::text').extract_first()
-                            item['non_compliance_area'] = i_row.css('td:nth-child(2)::text').extract_first()
-                            item['correction_required'] = i_row.css('td:nth-child(3)::text').extract_first()
-                            item['plans_of_correction'] = i_row.css('td:nth-child(4)::text').extract_first()
-                            item['correction_date'] = i_row.css('td:nth-child(5) span::text').extract_first()
-                            item['poc_status'] = i_row.css('td:nth-child(6)::text').extract_first()
-                            yield item
+                if count < (len(rows) - 1) and rows[count + 1].css('div table'):
+                    self.log("Next row has inspection grid, saving inspection data...")
+                    inspection_grid_rows = rows[count + 1].css('div table tr')
+                    # loop over all rows except col headers
+                    for i_row in inspection_grid_rows[1:]:
+                        # save inspection data
+                        item['regulation'] = i_row.css('td:nth-child(1)::text').extract_first()
+                        item['non_compliance_area'] = i_row.css('td:nth-child(2)::text').extract_first()
+                        item['correction_required'] = i_row.css('td:nth-child(3)::text').extract_first()
+                        item['plans_of_correction'] = i_row.css('td:nth-child(4)::text').extract_first()
+                        item['correction_date'] = i_row.css('td:nth-child(5) span::text').extract_first()
+                        item['poc_status'] = i_row.css('td:nth-child(6)::text').extract_first()
+                        yield item
                 else:
-                    print("Next row has no inspection grid...")
+                    self.log("Next row has no inspection grid...")
 
                     item['regulation'] = None
                     item['non_compliance_area'] = None
@@ -152,8 +150,8 @@ class InspectionsSpider(scrapy.Spider):
                     item['poc_status'] = None
                     yield item
         else:
-            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-            print("~~~~~~~~ NO ROWS FOUND! ~~~~~~")
-            print("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            self.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
+            self.log("~~~~~~~~ NO ROWS FOUND! ~~~~~~")
+            self.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
 
 
