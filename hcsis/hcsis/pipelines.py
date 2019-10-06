@@ -21,7 +21,7 @@ class HcsisPipeline(object):
             provider_name text,
             provider_id text,
             service_location text,
-            service_location_id text
+            service_location_id text,
             inspection_id text,
             inspection_reason text,
             inspection_date text,
