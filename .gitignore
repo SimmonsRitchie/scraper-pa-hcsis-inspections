@@ -2,4 +2,7 @@
 Pipfile.lock
 hcsis/hcsis/__pycache__/
 __pycache__
+hcsis.db
 hcsis/hcsis.db
+hcsis.csv
+hcsis/hcsis.csv
