@@ -22,6 +22,7 @@ class HcsisPipeline(object):
             provider_id text,
             service_location text,
             service_location_id text,
+            inspections_found text,
             inspection_id text,
             inspection_reason text,
             inspection_date text,
@@ -39,11 +40,12 @@ class HcsisPipeline(object):
         return item
 
     def store_db(self, item):
-        self.curr.execute("""insert into inspections_tb values (?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+        self.curr.execute("""insert into inspections_tb values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
             item['provider_name'],
             item['provider_id'],
             item['service_location'],
             item['service_location_id'],
+            item['inspections_found'],
             item['inspection_id'],
             item['inspection_reason'],
             item['inspection_date'],

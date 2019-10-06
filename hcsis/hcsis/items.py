@@ -14,6 +14,7 @@ class HcsisItem(scrapy.Item):
     provider_id = scrapy.Field()
     service_location = scrapy.Field()
     service_location_id = scrapy.Field()
+    inspections_found = scrapy.Field()
     inspection_id = scrapy.Field()
     inspection_reason = scrapy.Field()
     inspection_date = scrapy.Field()
