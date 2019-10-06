@@ -17,6 +17,7 @@ class InspectionsSpider(scrapy.Spider):
         provider_rows = response.css('blockquote td.BodyText')
         provider_list = [row.css('td a::text').extract_first() for row in provider_rows]
         self.log(f"PROVIDER LIST: {provider_list}")
+        self.log(f"PROVIDER COUNT: {len(provider_list)}")
 
         for count, row in enumerate(provider_rows):
             # For testing purposes - delete this later
@@ -47,8 +48,8 @@ class InspectionsSpider(scrapy.Spider):
     def parse_cert_page(self,response):
         page = response.meta.get('cert_page_count')
         item = response.meta.get('item')
-        self.log(f">>>>>>>>>>> PROCESSING... {item['provider_name']}, ID: {item['provider_id']}")
-        self.log(f'~~~~~~~~~ PAGE: {page}')
+        self.log(f">>>>>>>>>>> PROCESSING PROVIDER: {item['provider_name']}, ID: {item['provider_id']}")
+        self.log(f'~~~~~~~~~ PROCESSING CERTIFIED LOCATIONS, PAGE: {page}')
         location_rows = response.css('td:nth-child(4) a')
         location_rows = [location_row for location_row in location_rows if not location_row.css('::attr('
                                                                                             'href)').re_first(
@@ -61,11 +62,6 @@ class InspectionsSpider(scrapy.Spider):
 
                 service_location = location.css('::text').extract_first()
                 service_location_id = location.css('::attr(href)').re_first('\d+$')
-                self.log('~~~~~~~~~~~~~~~~~~~~~~~~~')
-                self.log(f"           Processing service location: {service_location} {service_location_id}")
-                # item['service_location'] = service_location
-                # item['service_location_id'] = service_location_id
-
                 location_inspection_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/Inspections.aspx" \
                     f"?p_varProvrId={item['provider_id']}&ServiceLocationID={service_location_id}"
                 if service_location_id:
@@ -98,12 +94,13 @@ class InspectionsSpider(scrapy.Spider):
 
     def parse_inspection_page(self, response):
         item = response.meta.get('item')
-
         item['service_location'] = response.meta.get('service_location')
         item['service_location_id'] = response.meta.get('service_location_id')
 
+        self.log('~~~~~~~~~~~~~~~~~~~~~~~~~')
+        self.log(f"           Processing service location: {item['service_location']} {item['service_location_id']}")
+
         rows = response.css('form div div table#grdInspections > tr')
-        # self.log(response.css('html').extract())
         if rows:
             rows = rows[1:] # remove col headers
             self.log(f"LENGTH OF ROWS: {len(rows)}")
