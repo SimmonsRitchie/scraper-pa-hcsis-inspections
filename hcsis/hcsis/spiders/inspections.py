@@ -19,7 +19,7 @@ class InspectionsSpider(scrapy.Spider):
 
         for count, row in enumerate(provider_rows):
             # For testing purposes - delete this later
-            if count > 11:
+            if count > 4:
                 break
             item = HcsisItem()
             provider_name = row.css('td a::text').extract_first()
@@ -59,6 +59,9 @@ class InspectionsSpider(scrapy.Spider):
             for location in location_rows:
                 service_location = location.css('::text').extract_first()
                 service_location_id = location.css('::attr(href)').re_first('\d+$')
+                print('~~~~~~~~~~~~~~~~~~~~~~~~~')
+                print(f"           Processing service location: {service_location} {service_location_id}")
+                # TODO: Fix glitch, where these two fields aren't updating for each item
                 item['service_location'] = service_location
                 item['service_location_id'] = service_location_id
 
@@ -66,7 +69,9 @@ class InspectionsSpider(scrapy.Spider):
                     f"?p_varProvrId={item['provider_id']}&ServiceLocationID={service_location_id}"
                 if service_location_id:
                     yield response.follow(location_inspection_page, callback=self.parse_inspection_page,
-                                          meta={'item':item, 'cert_page_count':page})
+                                          meta={'item':item})
+
+
         else:
             print(f"No certified locations found for {item['provider_name']} {item['provider_id']}")
             item['service_location'] = "No certified locations"
