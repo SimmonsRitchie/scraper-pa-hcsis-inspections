@@ -14,10 +14,12 @@ class InspectionsSpider(scrapy.Spider):
     def parse(self, response):
 
         provider_rows = response.css('blockquote td.BodyText')
+        provider_list = [row.css('td a::text').extract_first() for row in provider_rows]
+        print(f"PROVIDER LIST: {provider_list}")
 
         for count, row in enumerate(provider_rows):
             # For testing purposes - delete this later
-            if count > 8:
+            if count > 11:
                 break
             item = HcsisItem()
             provider_name = row.css('td a::text').extract_first()
@@ -26,24 +28,26 @@ class InspectionsSpider(scrapy.Spider):
             item['provider_name'] = provider_name
             item['provider_id'] = provider_id
 
-            provider_cert_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages" \
-                f"/certifiedservicelocationslist.aspx?p_varProvrId={provider_id}"
-            if provider_id is not None:
+            provider_cert_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/certifiedservicelocationslist.aspx?p_varProvrId={provider_id}"
+            if provider_id:
                 yield response.follow(provider_cert_page, callback=self.parse_cert_page, meta={'item': item,
                                                                                                'cert_page_count': 1})
+            else:
+                print(f">>>>>>>>>>>> No provider ID found for name: {provider_name}, id: {provider_id}")
 
         next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
             f'?alphabet={InspectionsSpider.ALPHABET[InspectionsSpider.page_count]}'
 
-        if InspectionsSpider.page_count > 0:
+        if InspectionsSpider.page_count < 0:
         # if InspectionsSpider.page_count < (len(InspectionsSpider.ALPHABET) - 1):
             InspectionsSpider.page_count += 1
             yield response.follow(next_page, callback=self.parse)
 
     def parse_cert_page(self,response):
         page = response.meta.get('cert_page_count')
-        print(f'~~~~~~~~~ PAGE: {page}')
         item = response.meta.get('item')
+        print(f">>>>>>>>>>> PROCESSING... {item['provider_name']}, ID: {item['provider_id']}")
+        print(f'~~~~~~~~~ PAGE: {page}')
         location_rows = response.css('td:nth-child(4) a')
         location_rows = [location_row for location_row in location_rows if not location_row.css('::attr('
                                                                                             'href)').re_first(
@@ -58,13 +62,19 @@ class InspectionsSpider(scrapy.Spider):
                 item['service_location'] = service_location
                 item['service_location_id'] = service_location_id
 
-                location_inspection_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/Inspections.aspx?p_varProvrId=1471&ServiceLocationID={service_location_id}"
+                location_inspection_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/Inspections.aspx" \
+                    f"?p_varProvrId={item['provider_id']}&ServiceLocationID={service_location_id}"
                 if service_location_id:
-                    yield response.follow(location_inspection_page, callback=self.parse_inspection_page, meta={'item':
-                                                                                                                item})
+                    yield response.follow(location_inspection_page, callback=self.parse_inspection_page,
+                                          meta={'item':item, 'cert_page_count':page})
         else:
+            print(f"No certified locations found for {item['provider_name']} {item['provider_id']}")
             item['service_location'] = "No certified locations"
-            item['service_location_id'] = None
+            list_of_vals = ["service_location_id","inspection_id", "inspection_reason", "inspection_date",
+                            "inspection_status", "regulation", "non_compliance_area", "correction_required", "plans_of_correction",
+                            "correction_date","poc_status"]
+            for item_key in list_of_vals:
+                item[item_key] = None
             yield item
 
         if pagination:
