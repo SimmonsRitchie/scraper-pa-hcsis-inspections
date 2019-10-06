@@ -20,7 +20,7 @@ class InspectionsSpider(scrapy.Spider):
 
         for count, row in enumerate(provider_rows):
             # For testing purposes - delete this later
-            if count > 4:
+            if count > 16:
                 break
             item = HcsisItem()
             provider_name = row.css('td a::text').extract_first()
