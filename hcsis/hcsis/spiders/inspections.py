@@ -82,7 +82,6 @@ class InspectionsSpider(scrapy.Spider):
                     }, callback=self.parse_cert_page, meta={'item': item, 'cert_page_count': page})
 
         else:
-            item = response.meta.get('item')
             print('~~~~~~~~~~~~~~~~~~~~~~~~')
             print(f"No certified locations found for {item['provider_name']} {item['provider_id']}")
             item['service_location'] = "No certified locations"
