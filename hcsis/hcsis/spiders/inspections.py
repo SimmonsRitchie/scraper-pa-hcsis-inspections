@@ -32,7 +32,7 @@ class InspectionsSpider(scrapy.Spider):
 
             provider_cert_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/certifiedservicelocationslist.aspx?p_varProvrId={provider_id}"
             if provider_id:
-                yield response.follow(provider_cert_page, callback=self.parse_cert_page, meta={'item': item,
+                yield response.follow(provider_cert_page, callback=self.parse_cert_page, meta={'item': item.copy(),
                                                                                                'cert_page_count': 1})
             else:
                 self.log(f">>>>>>>>>>>> No provider ID found for name: {provider_name}, id: {provider_id}")
@@ -66,7 +66,7 @@ class InspectionsSpider(scrapy.Spider):
                     f"?p_varProvrId={item['provider_id']}&ServiceLocationID={service_location_id}"
                 if service_location_id:
                     yield response.follow(location_inspection_page, callback=self.parse_inspection_page,
-                                          meta={'item':item,
+                                          meta={'item':item.copy(),
                                                 'service_location': service_location,
                                                 'service_location_id': service_location_id
                                                 })
@@ -90,7 +90,7 @@ class InspectionsSpider(scrapy.Spider):
                 yield FormRequest.from_response(response, formdata={
                     '__EVENTTARGET': 'ctl00$SSDPageContent$grdCertifiedServiceLocations',
                     '__EVENTARGUMENT': f'Page${page}',
-                }, callback=self.parse_cert_page, meta={'item': item, 'cert_page_count': page})
+                }, callback=self.parse_cert_page, meta={'item': item.copy(), 'cert_page_count': page})
 
 
     def parse_inspection_page(self, response):
