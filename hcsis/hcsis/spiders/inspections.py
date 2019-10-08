@@ -9,7 +9,7 @@ from scrapy.http import FormRequest
 class InspectionsSpider(scrapy.Spider):
     name = 'inspections'
     start_urls = ['https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders?alphabet=A']
-    ALPHABET = re.findall('[B-Z]',string.ascii_uppercase) + ['OTHER']
+    ALPHABET = re.findall('[A-Z]',string.ascii_uppercase) + ['OTHER']
     page_count = 0
 
     def parse(self, response):
@@ -22,8 +22,8 @@ class InspectionsSpider(scrapy.Spider):
         self.log(f"PROVIDER COUNT: {len(provider_list)}")
 
         for count, row in enumerate(provider_rows):
-            if count > 5:
-                break
+            # if count > 5:
+            #     break
             item = HcsisItem()
             provider_name = row.css('td a::text').extract_first()
             provider_id = row.css('td a::attr(href)').re_first('\d+$')
@@ -37,13 +37,14 @@ class InspectionsSpider(scrapy.Spider):
                 yield response.follow(provider_cert_page, callback=self.parse_cert_page, meta={'item': item.copy(),
                                                                                                'cert_page_count': 1})
             else:
-                self.log(f">>>>>>>>>>>> No provider ID found for name: {provider_name}, id: {provider_id}")
+                self.log(f">>>>>>> No provider ID found for provider: {provider_name}, id: {provider_id}")
 
+        # note: we add 1 to page count because we begin by scraping the 'A' directory
         next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
-            f'?alphabet={InspectionsSpider.ALPHABET[InspectionsSpider.page_count]}'
+            f'?alphabet={InspectionsSpider.ALPHABET[InspectionsSpider.page_count + 1]}'
 
-        if InspectionsSpider.page_count < 0:
-        # if InspectionsSpider.page_count < (len(InspectionsSpider.ALPHABET) - 1):
+        # if InspectionsSpider.page_count < 3:
+        if InspectionsSpider.page_count < (len(InspectionsSpider.ALPHABET) - 1):
             InspectionsSpider.page_count += 1
             yield response.follow(next_page, callback=self.parse)
 
