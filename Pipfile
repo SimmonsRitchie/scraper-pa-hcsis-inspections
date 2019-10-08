@@ -7,6 +7,8 @@ verify_ssl = true
 
 [packages]
 scrapy = "*"
+pandas = "*"
+pathlib = "*"
 
 [requires]
 python_version = "3.6"
