@@ -62,12 +62,11 @@ class InspectionsSpider(scrapy.Spider):
                 location_inspection_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/Inspections.aspx" \
                     f"?p_varProvrId={item['provider_id']}&ServiceLocationID={service_location_id}"
                 item['inspections_page_url'] = location_inspection_page
+                item['service_location'] = service_location
+                item['service_location_id'] = service_location_id
                 if service_location_id:
                     yield response.follow(location_inspection_page, callback=self.parse_inspection_page,
-                                          meta={'item':item.copy(),
-                                                'service_location': service_location,
-                                                'service_location_id': service_location_id
-                                                })
+                                          meta={'item':item.copy()})
 
         else:
             self.log('~~~~~~~~~~~~~~~~~~~~~~~~')
@@ -94,8 +93,7 @@ class InspectionsSpider(scrapy.Spider):
 
     def parse_inspection_page(self, response):
         item = response.meta.get('item')
-        item['service_location'] = response.meta.get('service_location')
-        item['service_location_id'] = response.meta.get('service_location_id')
+
         rows = response.css('form div div table#grdInspections > tr')
 
         if rows:
