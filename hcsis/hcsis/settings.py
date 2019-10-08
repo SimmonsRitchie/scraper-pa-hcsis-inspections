@@ -108,14 +108,14 @@ root_logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 
 # rotating file handler
-log_file1 = 'CRAWLER_debug.log'
+log_file1 = '../logs/CRAWLER_debug.log'
 rotating_file_log = RotatingFileHandler(log_file1, mode='w')
 rotating_file_log.setLevel(logging.DEBUG)
 rotating_file_log.setFormatter(formatter)
 root_logger.addHandler(rotating_file_log)
 
 # rotating file handler
-log_file2 = 'CRAWLER_error.log'
+log_file2 = '../logs/CRAWLER_error.log'
 rotating_file_log = RotatingFileHandler(log_file2, mode='w')
 rotating_file_log.setLevel(logging.ERROR)
 rotating_file_log.setFormatter(formatter)
