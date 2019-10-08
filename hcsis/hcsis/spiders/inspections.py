@@ -33,20 +33,19 @@ class InspectionsSpider(scrapy.Spider):
 
             provider_cert_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/certifiedservicelocationslist.aspx?p_varProvrId={provider_id}"
             item['certified_locations_url'] = provider_cert_page
+            self.log(provider_name)
             if provider_id:
                 yield response.follow(provider_cert_page, callback=self.parse_cert_page, meta={'item': item.copy(),
                                                                                                'cert_page_count': 1})
             else:
                 self.log(f">>>>>>> No provider ID found for provider: {provider_name}, id: {provider_id}")
 
-        # note: we add 1 to page count because we begin by scraping the 'A' directory
-        next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
-            f'?alphabet={InspectionsSpider.ALPHABET[InspectionsSpider.page_count + 1]}'
-
-        # if InspectionsSpider.page_count < 3:
         if InspectionsSpider.page_count < (len(InspectionsSpider.ALPHABET) - 1):
             InspectionsSpider.page_count += 1
+            next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
+                f'?alphabet={InspectionsSpider.ALPHABET[InspectionsSpider.page_count]}'
             yield response.follow(next_page, callback=self.parse)
+
 
     def parse_cert_page(self,response):
         page = response.meta.get('cert_page_count')
