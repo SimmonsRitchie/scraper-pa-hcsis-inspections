@@ -20,6 +20,7 @@ class HcsisPipeline(object):
         self.curr.execute("""create table inspections_tb(
             provider_name text,
             provider_id text,
+            certified_locations_url text,
             service_location text,
             service_location_id text,
             inspections_page_url text,
@@ -41,9 +42,10 @@ class HcsisPipeline(object):
         return item
 
     def store_db(self, item):
-        self.curr.execute("""insert into inspections_tb values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
+        self.curr.execute("""insert into inspections_tb values (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""", (
             item['provider_name'],
             item['provider_id'],
+            item['certified_locations_url'],
             item['service_location'],
             item['service_location_id'],
             item['inspections_page_url'],

@@ -12,6 +12,7 @@ class HcsisItem(scrapy.Item):
     # define the fields for your item here like:
     provider_name = scrapy.Field()
     provider_id = scrapy.Field()
+    certified_locations_url = scrapy.Field()
     service_location = scrapy.Field()
     service_location_id = scrapy.Field()
     inspections_found = scrapy.Field()

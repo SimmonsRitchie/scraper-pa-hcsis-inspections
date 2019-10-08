@@ -16,10 +16,14 @@ class InspectionsSpider(scrapy.Spider):
 
         provider_rows = response.css('blockquote td.BodyText')
         provider_list = [row.css('td a::text').extract_first() for row in provider_rows]
+
+        self.log(f"SCRAPING PROVIDERS THAT START WITH LETTER: {InspectionsSpider.ALPHABET[InspectionsSpider.page_count]}")
         self.log(f"PROVIDER LIST: {provider_list}")
         self.log(f"PROVIDER COUNT: {len(provider_list)}")
 
         for count, row in enumerate(provider_rows):
+            if count > 5:
+                break
             item = HcsisItem()
             provider_name = row.css('td a::text').extract_first()
             provider_id = row.css('td a::attr(href)').re_first('\d+$')
@@ -28,6 +32,7 @@ class InspectionsSpider(scrapy.Spider):
             item['provider_id'] = provider_id
 
             provider_cert_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/certifiedservicelocationslist.aspx?p_varProvrId={provider_id}"
+            item['certified_locations_url'] = provider_cert_page
             if provider_id:
                 yield response.follow(provider_cert_page, callback=self.parse_cert_page, meta={'item': item.copy(),
                                                                                                'cert_page_count': 1})
@@ -37,7 +42,7 @@ class InspectionsSpider(scrapy.Spider):
         next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
             f'?alphabet={InspectionsSpider.ALPHABET[InspectionsSpider.page_count]}'
 
-        if InspectionsSpider.page_count < 3:
+        if InspectionsSpider.page_count < 0:
         # if InspectionsSpider.page_count < (len(InspectionsSpider.ALPHABET) - 1):
             InspectionsSpider.page_count += 1
             yield response.follow(next_page, callback=self.parse)
