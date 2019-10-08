@@ -20,9 +20,6 @@ class InspectionsSpider(scrapy.Spider):
         self.log(f"PROVIDER COUNT: {len(provider_list)}")
 
         for count, row in enumerate(provider_rows):
-            # For testing purposes - so we only test the scraper on a few providers, delete this later
-            if count > 20:
-                break
             item = HcsisItem()
             provider_name = row.css('td a::text').extract_first()
             provider_id = row.css('td a::attr(href)').re_first('\d+$')
@@ -40,7 +37,7 @@ class InspectionsSpider(scrapy.Spider):
         next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
             f'?alphabet={InspectionsSpider.ALPHABET[InspectionsSpider.page_count]}'
 
-        if InspectionsSpider.page_count < 0:
+        if InspectionsSpider.page_count < 3:
         # if InspectionsSpider.page_count < (len(InspectionsSpider.ALPHABET) - 1):
             InspectionsSpider.page_count += 1
             yield response.follow(next_page, callback=self.parse)
@@ -64,6 +61,7 @@ class InspectionsSpider(scrapy.Spider):
                 service_location_id = location.css('::attr(href)').re_first('\d+$')
                 location_inspection_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/Inspections.aspx" \
                     f"?p_varProvrId={item['provider_id']}&ServiceLocationID={service_location_id}"
+                item['inspections_page_url'] = location_inspection_page
                 if service_location_id:
                     yield response.follow(location_inspection_page, callback=self.parse_inspection_page,
                                           meta={'item':item.copy(),
@@ -75,7 +73,8 @@ class InspectionsSpider(scrapy.Spider):
             self.log('~~~~~~~~~~~~~~~~~~~~~~~~')
             self.log(f"No certified locations found for {item['provider_name']} {item['provider_id']}")
             item['service_location'] = "No certified locations"
-            list_of_vals = ["service_location_id","inspections_found","inspection_id", "inspection_reason",
+            list_of_vals = ["service_location_id","inspections_found","inspections_page_url","inspection_id",
+                            "inspection_reason",
                             "inspection_date",
                             "inspection_status", "regulation", "non_compliance_area", "correction_required", "plans_of_correction",
                             "correction_date","poc_status"]
