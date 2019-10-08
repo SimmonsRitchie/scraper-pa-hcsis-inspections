@@ -21,7 +21,7 @@ class InspectionsSpider(scrapy.Spider):
 
         for count, row in enumerate(provider_rows):
             # For testing purposes - so we only test the scraper on a few providers, delete this later
-            if count > 16:
+            if count > 20:
                 break
             item = HcsisItem()
             provider_name = row.css('td a::text').extract_first()
@@ -94,25 +94,23 @@ class InspectionsSpider(scrapy.Spider):
 
 
     def parse_inspection_page(self, response):
-
+        item = response.meta.get('item')
+        item['service_location'] = response.meta.get('service_location')
+        item['service_location_id'] = response.meta.get('service_location_id')
         rows = response.css('form div div table#grdInspections > tr')
+
         if rows:
             rows = rows[1:] # remove col headers
-            self.log(f"LENGTH OF ROWS: {len(rows)}")
+            self.info_service_location(item.copy(), f"NUMBER OF ROWS (minus col headers): {len(rows)}")
+            self.log(rows.extract())
             # We loop through each row of inspection info. Each row is one of two types: a row with metadata about an
             # inspection (eg. date, type of inspection, etc.) or a row that contains a grid with a list of violations.
             # An inspection grid row is always associated with the metadata row immediately preceding it. Not all
             # metadata rows are followed by inspection grids.
             for count, row in enumerate(rows):
-                item = response.meta.get('item')
-                item['service_location'] = response.meta.get('service_location')
-                item['service_location_id'] = response.meta.get('service_location_id')
-                self.log('~~~~~~~~~~~~~~~~~~~~~~~~~')
-                self.log(f"Processing service location: {item['service_location']} {item['service_location_id']}")
 
-
-                self.log(f"ROW {count}")
-                self.log(f"Column count: {len(row.css('tr > td').extract())}")
+                self.info_service_location(item.copy(), f"ROW {count}")
+                self.info_service_location(item.copy(), f"Column count: {len(row.css('tr > td').extract())}")
                 if row.css('div table'):
                     # if the row is an inspection grid then go to next loop iteration because it will have already been
                     # saved in prior loop iteration
@@ -121,7 +119,7 @@ class InspectionsSpider(scrapy.Spider):
                 else:
                     # Since this row is not an inspection grid it must contain meta data about the inspection. We
                     # save it in item.
-                    self.log("Saving inspection meta data...")
+                    self.info_service_location(item.copy(),"Saving inspection meta data...")
                     inspection_id = row.css('td:nth-child(1) span::text').extract_first()
                     inspection_reason = row.css('td:nth-child(2) span::text').extract_first()
                     inspection_date = row.css('td:nth-child(3) span::text').extract_first()
@@ -131,10 +129,11 @@ class InspectionsSpider(scrapy.Spider):
                     item['inspection_reason'] = inspection_reason
                     item['inspection_date'] = inspection_date
                     item['inspection_status'] = inspection_status
+                    self.info_service_location(item.copy(), f"INSPECTION ID: {item['inspection_id']}")
 
                 if count < (len(rows) - 1) and rows[count + 1].css('div table'):
                     # The next row has an inspection grid, we save info about each violation in the grid.
-                    self.log("Next row has inspection grid, saving violation data...")
+                    self.info_service_location(item.copy(),"Next row has inspection grid, saving violation data...")
                     inspection_grid_rows = rows[count + 1].css('div table tr')
                     # loop over all rows (except col headers) and save data
                     for i_row in inspection_grid_rows[1:]:
@@ -147,8 +146,9 @@ class InspectionsSpider(scrapy.Spider):
                         item['poc_status'] = i_row.css('td:nth-child(6)::text').extract_first()
                         yield item
                 else:
-                    self.log("Next row has no inspection grid...")
-
+                    # the next row has no inspection grid because it is either the last two in the table or it
+                    # doesn't contain a table element.
+                    self.info_service_location(item.copy(),"Next row has no inspection grid...")
                     set_to_none = ['regulation',
                                    'non_compliance_area',
                                    'correction_required',
@@ -157,16 +157,11 @@ class InspectionsSpider(scrapy.Spider):
                                    'poc_status']
                     for field in set_to_none:
                         item[field] = None
+                    yield item
 
 
         else:
-            item = response.meta.get('item')
-            item['service_location'] = response.meta.get('service_location')
-            item['service_location_id'] = response.meta.get('service_location_id')
-            self.log('~~~~~~~~~~~~~~~~~~~~~~~~~')
-            self.log(f"Processing service location: {item['service_location']} {item['service_location_id']}")
-            self.log("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~")
-            self.log("~~~~~~~~ NO INSPECTIONS FOUND")
+            self.info_service_location(item.copy(), "NO INSPECTIONS FOUND")
             item['inspections_found'] = False
             set_to_none = ['inspection_id',
                            'inspection_reason',
@@ -182,4 +177,7 @@ class InspectionsSpider(scrapy.Spider):
                 item[field] = None
             yield item
 
+    def info_service_location(self, item, message=""):
+        self.log('~~~~~~~~~~~~~~~~~~~~~~~~~')
+        self.log(f"PROV: {item['provider_id']}, {item['service_location']} {item['service_location_id']} | {message}")
 
