@@ -32,15 +32,22 @@ class TestDataIntegrity1(unittest.TestCase):
                 "provider_id": "421754",
                 "service_location_id": "0001",
                 "assert_count": 4
-            },  {
+            },
+            {
                 "provider_id": "1763",
                 "service_location_id": "0002",
                 "assert_count": 15
-            },  {
+            },
+            {
                 "provider_id": "1440",
                 "service_location_id": "0461",
                 "assert_count": 3
-            }
+            },
+            {
+                "provider_id": "1817",
+                "service_location_id": "0005",
+                "assert_count": 6
+            },
         ]
 
         df = self.df
@@ -71,11 +78,29 @@ class TestDataIntegrity1(unittest.TestCase):
                 "provider_id": "1642",
                 "inspection_id": "SIN-00106471",
                 "assert_count": 1
-            },  {
+            },
+            # 90 Cafferty Rd Operating Company
+            {
                 "provider_id": "359707",
                 "inspection_id": "SIN-00116668",
                 "assert_count": 1
-            }
+            },
+            # WAKEFIELD COTTAGE ARAPAHOE
+            {
+                "provider_id": "1897",
+                "inspection_id": "SIN-00089395",
+                "assert_count": 1
+            },
+            {
+                "provider_id": "384275",
+                "inspection_id": "SIN-00117015",
+                "assert_count": 1
+            },
+            {
+                "provider_id": "1817",
+                "inspection_id": "SIN-00042335",
+                "assert_count": 2
+            },
         ]
 
         df = self.df
@@ -86,6 +111,29 @@ class TestDataIntegrity1(unittest.TestCase):
                 "inspection_id"])]
             count = len(df_test.index)
             self.assertEqual(assert_item["assert_count"], count)
+
+
+    def test_no_certified_providers(self):
+        """
+        Test that certain providers have no certified locations
+        """
+
+        # list of provider IDs
+        assert_data = [
+            "411713",
+            "416911",
+            "4",
+            "396604"
+
+        ]
+
+        df = self.df
+        root_logger.debug("TEST: provider has no certified locations")
+        for assert_item in assert_data:
+            root_logger.debug(f"Testing: {assert_item}")
+            df_test = df[df["provider_id"] == assert_item]
+            test_val = df_test["service_location"].item()
+            self.assertEqual("No certified locations", test_val)
 
 
 
