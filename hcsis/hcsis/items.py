@@ -43,5 +43,6 @@ class SanctionItem(scrapy.Item):
     certified_locations_url = scrapy.Field()
     service_location = scrapy.Field()
     service_location_id = scrapy.Field()
+    sanctions_page_url = scrapy.Field()
     sanctions = scrapy.Field()
 
