@@ -11,6 +11,12 @@ class InspectionsSpider(scrapy.Spider):
     start_urls = ['https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders?alphabet=A']
     ALPHABET = re.findall('[A-Z]',string.ascii_uppercase) + ['OTHER']
     page_count = 0
+    custom_settings = {
+        'ITEM_PIPELINES': {
+        'hcsis.pipelines.HcsisPipeline': 300,
+        }
+    }
+
 
     def parse(self, response):
 
