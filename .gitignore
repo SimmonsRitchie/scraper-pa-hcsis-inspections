@@ -6,3 +6,4 @@ hcsis.db
 hcsis/hcsis.db
 *.csv
 *.json
+*.ipynb
