@@ -12,6 +12,7 @@ class SanctionsSpider(scrapy.Spider):
     ALPHABET = re.findall('[A-Z]',string.ascii_uppercase) + ['OTHER']
     page_count = 0
 
+
     def parse(self, response):
 
         provider_rows = response.css('blockquote td.BodyText')
@@ -22,8 +23,6 @@ class SanctionsSpider(scrapy.Spider):
         self.log(f"PROVIDER COUNT: {len(provider_list)}")
 
         for count, row in enumerate(provider_rows):
-            # if count > 10:
-            #     break
             item = SanctionItem()
             provider_name = row.css('td a::text').extract_first()
             provider_id = row.css('td a::attr(href)').re_first('\d+$')
@@ -40,7 +39,7 @@ class SanctionsSpider(scrapy.Spider):
             else:
                 self.log(f">>>>>>> No provider ID found for provider: {provider_name}, id: {provider_id}")
 
-        # if InspectionsSpider.page_count < 2: # only run one page
+        #if SanctionsSpider.page_count > 20000: # only run one page
         if SanctionsSpider.page_count < (len(SanctionsSpider.ALPHABET) - 1):
             SanctionsSpider.page_count += 1
             next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
@@ -69,6 +68,7 @@ class SanctionsSpider(scrapy.Spider):
                     f"?p_varProvrId={item['provider_id']}&ServiceLocationID={service_location_id}"
                 item['service_location'] = service_location
                 item['service_location_id'] = service_location_id
+                item['sanctions_page_url'] = sanction_page
                 if service_location_id:
                     yield response.follow(sanction_page, callback=self.parse_sanction_page,
                                           meta={'item':item.copy()})
@@ -95,3 +95,12 @@ class SanctionsSpider(scrapy.Spider):
 
 
     def parse_sanction_page(self, response):
+        item = response.meta.get('item')
+
+        sanctions = response.css('body > form::text').extract()
+        sanctions_clean = " ".join(sanctions)
+        sanctions_match = re.search('\S.*', sanctions_clean)
+        sanctions_clean = None if sanctions_match is None else sanctions_match.group(0)
+        item['sanctions'] = sanctions_clean
+
+        yield item
