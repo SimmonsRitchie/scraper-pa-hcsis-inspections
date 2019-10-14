@@ -23,6 +23,7 @@ class HcsisPipeline(object):
             certified_locations_url text,
             service_location text,
             service_location_id text,
+            service_location_unique_id text,
             
             region text,
             county text,
@@ -59,13 +60,15 @@ class HcsisPipeline(object):
         ?,?,?,?,?,
         ?,?,?,?,?,
         ?,?,?,?,?,
-        ?,?,?,?,?
+        ?,?,?,?,?,
+        ?
         )""", (
             item['provider_name'],
             item['provider_id'],
             item['certified_locations_url'],
             item['service_location'],
             item['service_location_id'],
+            item['service_location_unique_id'],
 
             item['region'],
             item['county'],

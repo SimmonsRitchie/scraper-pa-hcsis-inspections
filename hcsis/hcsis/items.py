@@ -14,6 +14,7 @@ class InspectionItem(scrapy.Item):
     certified_locations_url = scrapy.Field()
     service_location = scrapy.Field()
     service_location_id = scrapy.Field()
+    service_location_unique_id = scrapy.Field()
 
     region = scrapy.Field()
     county = scrapy.Field()
@@ -43,6 +44,7 @@ class SanctionItem(scrapy.Item):
     certified_locations_url = scrapy.Field()
     service_location = scrapy.Field()
     service_location_id = scrapy.Field()
+    service_location_unique_id = scrapy.Field()
     sanctions_page_url = scrapy.Field()
     sanctions = scrapy.Field()
 
