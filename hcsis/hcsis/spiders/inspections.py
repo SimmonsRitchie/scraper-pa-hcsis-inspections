@@ -77,6 +77,7 @@ class InspectionsSpider(scrapy.Spider):
 
                 item['service_location'] = service_location
                 item['service_location_id'] = service_location_id
+                item['service_location_unique_id'] = f"{item['provider_id']}-{item['service_location_id']}"
                 if service_location_id:
                     yield response.follow(location_page, callback=self.parse_location_page,
                                           meta={'item':item.copy()})
@@ -86,6 +87,7 @@ class InspectionsSpider(scrapy.Spider):
             self.log(f"No certified locations found for {item['provider_name']} {item['provider_id']}")
             item['service_location'] = "No certified locations"
             list_of_vals = ["service_location_id",
+                            "service_location_unique_id",
                             "region",
                             "county",
                             "service_specialty",
