@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 import scrapy
-from ..items import HcsisItem
+from ..items import InspectionItem
 
 import string
 import re
@@ -22,24 +22,25 @@ class InspectionsSpider(scrapy.Spider):
         self.log(f"PROVIDER COUNT: {len(provider_list)}")
 
         for count, row in enumerate(provider_rows):
-            # if count > 5:
+            # if count > 10:
             #     break
-            item = HcsisItem()
+            item = InspectionItem()
             provider_name = row.css('td a::text').extract_first()
             provider_id = row.css('td a::attr(href)').re_first('\d+$')
 
             item['provider_name'] = provider_name
             item['provider_id'] = provider_id
 
-            provider_cert_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/certifiedservicelocationslist.aspx?p_varProvrId={provider_id}"
-            item['certified_locations_url'] = provider_cert_page
+            locations_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/certifiedservicelocationslist.aspx?p_varProvrId={provider_id}"
+            item['certified_locations_url'] = locations_page
             self.log(provider_name)
             if provider_id:
-                yield response.follow(provider_cert_page, callback=self.parse_cert_page, meta={'item': item.copy(),
+                yield response.follow(locations_page, callback=self.parse_locations_page, meta={'item': item.copy(),
                                                                                                'cert_page_count': 1})
             else:
                 self.log(f">>>>>>> No provider ID found for provider: {provider_name}, id: {provider_id}")
 
+        # if InspectionsSpider.page_count < 2: # only run one page
         if InspectionsSpider.page_count < (len(InspectionsSpider.ALPHABET) - 1):
             InspectionsSpider.page_count += 1
             next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
@@ -47,7 +48,7 @@ class InspectionsSpider(scrapy.Spider):
             yield response.follow(next_page, callback=self.parse)
 
 
-    def parse_cert_page(self,response):
+    def parse_locations_page(self, response):
         page = response.meta.get('cert_page_count')
         item = response.meta.get('item')
         self.log(f">>>>>>>>>>> PROCESSING PROVIDER: {item['provider_name']}, ID: {item['provider_id']}")
@@ -64,24 +65,41 @@ class InspectionsSpider(scrapy.Spider):
 
                 service_location = location.css('::text').extract_first()
                 service_location_id = location.css('::attr(href)').re_first('\d+$')
-                location_inspection_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/Inspections.aspx" \
+                location_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/CertificationInformationTabs" \
+                    f".aspx" \
                     f"?p_varProvrId={item['provider_id']}&ServiceLocationID={service_location_id}"
-                item['inspections_page_url'] = location_inspection_page
+
                 item['service_location'] = service_location
                 item['service_location_id'] = service_location_id
                 if service_location_id:
-                    yield response.follow(location_inspection_page, callback=self.parse_inspection_page,
+                    yield response.follow(location_page, callback=self.parse_location_page,
                                           meta={'item':item.copy()})
 
         else:
             self.log('~~~~~~~~~~~~~~~~~~~~~~~~')
             self.log(f"No certified locations found for {item['provider_name']} {item['provider_id']}")
             item['service_location'] = "No certified locations"
-            list_of_vals = ["service_location_id","inspections_found","inspections_page_url","inspection_id",
+            list_of_vals = ["service_location_id",
+                            "region",
+                            "county",
+                            "service_specialty",
+                            "address",
+                            "first_cert_start_date",
+                            "first_cert_end_date",
+                            "last_cert_start_date",
+                            "last_cert_end_date",
+                            "inspections_found",
+                            "inspections_page_url",
+                            "inspection_id",
                             "inspection_reason",
                             "inspection_date",
-                            "inspection_status", "regulation", "non_compliance_area", "correction_required", "plans_of_correction",
-                            "correction_date","poc_status"]
+                            "inspection_status",
+                            "regulation",
+                            "non_compliance_area",
+                            "correction_required",
+                            "plans_of_correction",
+                            "correction_date",
+                            "poc_status"]
             for item_key in list_of_vals:
                 item[item_key] = None
             yield item
@@ -93,8 +111,46 @@ class InspectionsSpider(scrapy.Spider):
                 yield FormRequest.from_response(response, formdata={
                     '__EVENTTARGET': 'ctl00$SSDPageContent$grdCertifiedServiceLocations',
                     '__EVENTARGUMENT': f'Page${page}',
-                }, callback=self.parse_cert_page, meta={'item': item.copy(), 'cert_page_count': page})
+                }, callback=self.parse_locations_page, meta={'item': item.copy(), 'cert_page_count': page})
 
+
+    def parse_location_page(self,response):
+        item = response.meta.get('item')
+
+        item['region'] = response.css('#ctl00_SSDPageContent_LabelRegion::text').extract_first().replace('Region: ','')
+        item['county'] = response.css('#ctl00_SSDPageContent_LabelCouty::text').extract_first().replace('County: ','')
+        item['service_specialty'] = response.css('#ctl00_SSDPageContent_LabelSpecialty::text').extract_first().replace(
+            'Service Specialty: ','')
+        item['address'] = response.css('#ctl00_SSDPageContent_LabelAddress::text').extract_first().replace('Address: '
+                                                                                                          '','')
+
+        certificate_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/CertificateHistory.aspx" \
+            f"?p_varProvrId={item['provider_id']}&ServiceLocationID={item['service_location_id']}"
+
+        yield response.follow(certificate_page, callback=self.parse_certificate_page,
+                              meta={'item': item.copy()})
+
+    def parse_certificate_page(self,response):
+        item = response.meta.get('item')
+
+        first_cert_start_date = response.css('div > div > table > tr:nth-child(2) > td:nth-child(3) > span::text').extract_first()
+        first_cert_end_date = response.css('div > div > table > tr:nth-child(2) > td:nth-child(4) > '
+                                           'span::text').extract_first()
+        last_cert_start_date = response.css('div > div > table > tr:nth-last-child(1) > td:nth-child(3) > '
+                                        'span::text').extract_first()
+        last_cert_end_date = response.css('div > div > table > tr:nth-last-child(1) > td:nth-child(4) > '
+                                        'span::text').extract_first()
+        item['first_cert_start_date'] = first_cert_start_date
+        item['first_cert_end_date'] = first_cert_end_date
+        item['last_cert_start_date'] = last_cert_start_date
+        item['last_cert_end_date'] = last_cert_end_date
+
+        inspection_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/Inspections.aspx" \
+            f"?p_varProvrId={item['provider_id']}&ServiceLocationID={item['service_location_id']}"
+        item['inspections_page_url'] = inspection_page
+
+        yield response.follow(inspection_page, callback=self.parse_inspection_page,
+                              meta={'item': item.copy()})
 
     def parse_inspection_page(self, response):
         item = response.meta.get('item')
