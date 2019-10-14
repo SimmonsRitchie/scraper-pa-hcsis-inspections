@@ -1,5 +1,6 @@
 import unittest
 import pandas as pd
+import numpy as np
 from pathlib import Path
 import logging
 from logging import StreamHandler
@@ -11,6 +12,8 @@ stream_log = StreamHandler()
 root_logger.addHandler(stream_log)
 
 class TestDataIntegrity1(unittest.TestCase):
+    """ These tests check whether scraped data matches data on HCSIS website """
+
     def setUp(self) -> None:
         pd.set_option("display.max_columns", 40)
         pd.set_option("display.width", 2000)
@@ -101,6 +104,31 @@ class TestDataIntegrity1(unittest.TestCase):
                 "inspection_id": "SIN-00042335",
                 "assert_count": 2
             },
+            {
+                "provider_id": "425975",
+                "inspection_id": "SIN-00107126",
+                "assert_count": 4
+            },
+            {
+                "provider_id": "425975",
+                "inspection_id": "SIN-00129909",
+                "assert_count": 42
+            },
+            {
+                "provider_id": "416894",
+                "inspection_id": "SIN-00161701",
+                "assert_count": 4
+            },
+            {
+                "provider_id": "3213",
+                "inspection_id": "SIN-00102676",
+                "assert_count": 7
+            },
+            {
+                "provider_id": "3213",
+                "inspection_id": "SIN-00066080",
+                "assert_count": 2
+            },
         ]
 
         df = self.df
@@ -123,8 +151,8 @@ class TestDataIntegrity1(unittest.TestCase):
             "411713",
             "416911",
             "4",
-            "396604"
-
+            "396604",
+            "391308"
         ]
 
         df = self.df
@@ -136,6 +164,52 @@ class TestDataIntegrity1(unittest.TestCase):
             self.assertEqual("No certified locations", test_val)
 
 
+    def test_text_matches_row(self):
+        """
+        Test that text in regulation column is correct.
+        """
+        assert_data = [
+                {
+                "provider_id": "3213",
+                "inspection_id": "SIN-00066080",
+                "assert_reg": "2390.158(b)"
+            },
+            {
+                "provider_id": "3213",
+                "inspection_id": "SIN-00080038",
+                "assert_reg": "2390.151(e)(13(ii)"
+            },
+            {
+                "provider_id": "2106",
+                "inspection_id": "SIN-00051643",
+                "assert_reg": "2380.186(d)"
+            },
+            {
+                "provider_id": "2106",
+                "inspection_id": "SIN-00069441",
+                "assert_reg": np.NaN
+            },
+            {
+                "provider_id": "1744",
+                "inspection_id": "SIN-00108172",
+                "assert_reg": "6400.186(c)(1)"
+            },
+            {
+                "provider_id": "1744",
+                "inspection_id": "SIN-00135807",
+                "assert_reg": "6400.112(f)"
+            },
+        ]
+
+        df = self.df
+        root_logger.debug("TEST: expected violation name is included among violations in inspection")
+        for assert_item in assert_data:
+            root_logger.debug(f"Testing: {assert_item['provider_id']}, inspection_id: {assert_item['inspection_id']}")
+            df_test = df[(df["provider_id"] == assert_item["provider_id"]) & (df["inspection_id"] == assert_item[
+                "inspection_id"])]
+            test_list = df_test['regulation'].tolist()
+            truth_test = assert_item['assert_reg'] in test_list
+            self.assertTrue(truth_test)
 
 
 if __name__ == "__main__":
