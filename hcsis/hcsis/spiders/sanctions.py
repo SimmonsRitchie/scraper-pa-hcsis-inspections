@@ -68,6 +68,7 @@ class SanctionsSpider(scrapy.Spider):
                     f"?p_varProvrId={item['provider_id']}&ServiceLocationID={service_location_id}"
                 item['service_location'] = service_location
                 item['service_location_id'] = service_location_id
+                item['service_location_unique_id'] = f"{item['provider_id']}-{item['service_location_id']}"
                 item['sanctions_page_url'] = sanction_page
                 if service_location_id:
                     yield response.follow(sanction_page, callback=self.parse_sanction_page,
@@ -78,6 +79,7 @@ class SanctionsSpider(scrapy.Spider):
             self.log(f"No certified locations found for {item['provider_name']} {item['provider_id']}")
             item['service_location'] = "No certified locations"
             list_of_vals = ["service_location_id",
+                            "service_location_unique_id",
                             "sanctions"]
 
             for item_key in list_of_vals:
@@ -97,10 +99,10 @@ class SanctionsSpider(scrapy.Spider):
     def parse_sanction_page(self, response):
         item = response.meta.get('item')
 
-        sanctions = response.css('body > form::text').extract()
+        sanctions = response.css('body::text').extract()
         sanctions_clean = " ".join(sanctions)
-        sanctions_match = re.search('\S.*', sanctions_clean)
-        sanctions_clean = None if sanctions_match is None else sanctions_match.group(0)
+        #sanctions_match = re.search('\S.*', sanctions_clean)
+        #sanctions_clean = None if sanctions_match is None else sanctions_match.group(0)
         item['sanctions'] = sanctions_clean
 
         yield item
