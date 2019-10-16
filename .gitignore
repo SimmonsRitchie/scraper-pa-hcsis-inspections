@@ -7,3 +7,4 @@ hcsis/hcsis.db
 *.csv
 *.json
 *.ipynb
+hcsis/scraped_data/
