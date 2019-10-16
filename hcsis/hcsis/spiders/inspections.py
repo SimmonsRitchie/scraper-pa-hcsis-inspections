@@ -28,7 +28,7 @@ class InspectionsSpider(scrapy.Spider):
         self.log(f"PROVIDER COUNT: {len(provider_list)}")
 
         for count, row in enumerate(provider_rows):
-            # if count > 10:
+            # if count > 37:
             #     break
             item = InspectionItem()
             provider_name = row.css('td a::text').extract_first()
@@ -51,11 +51,11 @@ class InspectionsSpider(scrapy.Spider):
                 yield response.follow(locations_page, callback=self.parse_locations_page, meta={'item': item.copy(),
                                                                                                'cert_page_count': 1})
             else:
-                self.log(f"{provider_name}, id: {provider_id} is not a real provider (href value: {provider_type}) "
-                         f"Not scraping info for this provider.")
+                self.log(f"{provider_name}, id: {provider_id} is not a real provider ('{provider_type}') "
+                         f"Not scraping info for this provider. Full URL to this provider's' page: {prov_href}")
 
-        if InspectionsSpider.page_count < 2: # only run one page
-        # if InspectionsSpider.page_count < (len(InspectionsSpider.ALPHABET) - 1):
+        # if InspectionsSpider.page_count < 2: # only run one page
+        if InspectionsSpider.page_count < (len(InspectionsSpider.ALPHABET) - 1):
             InspectionsSpider.page_count += 1
             next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
                 f'?alphabet={InspectionsSpider.ALPHABET[InspectionsSpider.page_count]}'
