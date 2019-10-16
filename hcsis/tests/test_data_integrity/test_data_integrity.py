@@ -4,6 +4,7 @@ import numpy as np
 from pathlib import Path
 import logging
 from logging import StreamHandler
+import re
 
 root_logger = logging.getLogger()
 root_logger.setLevel(logging.DEBUG)
@@ -129,6 +130,11 @@ class TestDataIntegrity1(unittest.TestCase):
                 "inspection_id": "SIN-00066080",
                 "assert_count": 2
             },
+            {
+                "provider_id": "2048",
+                "inspection_id": "SIN-00144697",
+                "assert_count": 1
+            },
         ]
 
         df = self.df
@@ -210,6 +216,30 @@ class TestDataIntegrity1(unittest.TestCase):
             test_list = df_test['regulation'].tolist()
             truth_test = assert_item['assert_reg'] in test_list
             self.assertTrue(truth_test)
+
+
+    def test_provider_names_present(self):
+        """ Test that selected provider names are included in data """
+
+        df = self.df
+        assert_data_path = Path('../assert_data/provider_names.csv')
+        df_assert = pd.read_csv(assert_data_path)
+        assert_list = df_assert['provider_names'].to_list()
+        provider_names = df['provider_name'].unique().tolist()
+        provider_names = [name.upper().strip() for name in provider_names]
+        root_logger.debug(f"TEST: {len(assert_list)} provider names are included among scraped data ({len(provider_names)})")
+        root_logger.debug(provider_names)
+
+        false_list = []
+        for assert_item in assert_list:
+            name_check = True if assert_item.upper().strip() in provider_names else False
+            root_logger.debug(f"{(assert_item)} - {name_check}")
+            if not name_check:
+                false_list.append(assert_item)
+
+        root_logger.debug(f"Non-matching items: {false_list}")
+        full_name_check = set(assert_list).issubset(provider_names)
+        self.assertTrue(full_name_check)
 
 
 if __name__ == "__main__":
