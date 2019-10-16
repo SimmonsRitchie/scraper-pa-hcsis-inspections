@@ -33,21 +33,29 @@ class InspectionsSpider(scrapy.Spider):
             item = InspectionItem()
             provider_name = row.css('td a::text').extract_first()
             provider_id = row.css('td a::attr(href)').re_first('\d+$')
-
-            item['provider_name'] = provider_name
-            item['provider_id'] = provider_id
-
-            locations_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/certifiedservicelocationslist.aspx?p_varProvrId={provider_id}"
-            item['certified_locations_url'] = locations_page
             self.log(provider_name)
-            if provider_id:
+
+            # Some HCSIS providers are 'Supports Coordination Agencies'. These don't appear to have locations that
+            # are inspected. We only scrape REAL providers
+            prov_href = row.css('td a::attr(href)').extract_first()
+            provider_type = re.match('.*ServicesSupportDirectory/(?P<provider_type>.*)\?.*',prov_href)
+            provider_type = provider_type.group('provider_type')
+            if 'ProviderDetails' in provider_type:
+                self.log(f"{provider_name} {provider_id} is an actual provider ({provider_type}). Beginning scrape.")
+
+                item['provider_name'] = provider_name
+                item['provider_id'] = provider_id
+
+                locations_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/certifiedservicelocationslist.aspx?p_varProvrId={provider_id}"
+                item['certified_locations_url'] = locations_page
                 yield response.follow(locations_page, callback=self.parse_locations_page, meta={'item': item.copy(),
                                                                                                'cert_page_count': 1})
             else:
-                self.log(f">>>>>>> No provider ID found for provider: {provider_name}, id: {provider_id}")
+                self.log(f"{provider_name}, id: {provider_id} is not a real provider (href value: {provider_type}) "
+                         f"Not scraping info for this provider.")
 
-        # if InspectionsSpider.page_count < 2: # only run one page
-        if InspectionsSpider.page_count < (len(InspectionsSpider.ALPHABET) - 1):
+        if InspectionsSpider.page_count < 2: # only run one page
+        # if InspectionsSpider.page_count < (len(InspectionsSpider.ALPHABET) - 1):
             InspectionsSpider.page_count += 1
             next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
                 f'?alphabet={InspectionsSpider.ALPHABET[InspectionsSpider.page_count]}'
