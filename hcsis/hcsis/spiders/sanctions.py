@@ -39,8 +39,8 @@ class SanctionsSpider(scrapy.Spider):
             else:
                 self.log(f">>>>>>> No provider ID found for provider: {provider_name}, id: {provider_id}")
 
-        if SanctionsSpider.page_count > 20000: # only run one page
-        # if SanctionsSpider.page_count < (len(SanctionsSpider.ALPHABET) - 1):
+        # if SanctionsSpider.page_count > 20000: # only run one page
+        if SanctionsSpider.page_count < (len(SanctionsSpider.ALPHABET) - 1):
             SanctionsSpider.page_count += 1
             next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
                 f'?alphabet={SanctionsSpider.ALPHABET[SanctionsSpider.page_count]}'
@@ -69,22 +69,24 @@ class SanctionsSpider(scrapy.Spider):
                 item['service_location'] = service_location
                 item['service_location_id'] = service_location_id
                 item['service_location_unique_id'] = f"{item['provider_id']}-{item['service_location_id']}"
+                item['cert_info_tabs_url'] = \
+                    f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/CertificationInformationTabs.aspx" \
+                        f"?p_varProvrId={item['provider_id']}&ServiceLocationID={service_location_id}"
                 item['sanctions_page_url'] = sanction_page
                 if service_location_id:
                     yield response.follow(sanction_page, callback=self.parse_sanction_page,
                                           meta={'item':item.copy()})
 
         else:
-            self.log('~~~~~~~~~~~~~~~~~~~~~~~~')
-            self.log(f"No certified locations found for {item['provider_name']} {item['provider_id']}")
-            item['service_location'] = "No certified locations"
-            list_of_vals = ["service_location_id",
-                            "service_location_unique_id",
-                            "sanctions"]
-
-            for item_key in list_of_vals:
-                item[item_key] = None
-            yield item
+            self.log("No certified locations")
+            # item['service_location'] = "No certified locations"
+            # list_of_vals = ["service_location_id",
+            #                 "service_location_unique_id", "cert_info_tabs_url",
+            #                 "sanction_id", "sanction_type","sanction_issuance_date","sanction_status"]
+            #
+            # for item_key in list_of_vals:
+            #     item[item_key] = None
+            # yield item
 
         if pagination:
             if page != int(pagination[-1]):
@@ -116,11 +118,11 @@ class SanctionsSpider(scrapy.Spider):
                 yield item
         else:
             self.info_service_location(item, "No sanctions found")
-            item['sanction_id'] = None
-            item['sanction_type'] = None
-            item['sanction_issuance_date'] = None
-            item['sanction_status'] = None
-            yield item
+            # item['sanction_id'] = None
+            # item['sanction_type'] = None
+            # item['sanction_issuance_date'] = None
+            # item['sanction_status'] = None
+            # yield item
 
     def info_service_location(self, item, message=""):
         self.log('~~~~~~~~~~~~~~~~~~~~~~~~~')
