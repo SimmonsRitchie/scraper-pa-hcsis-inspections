@@ -39,8 +39,8 @@ class SanctionsSpider(scrapy.Spider):
             else:
                 self.log(f">>>>>>> No provider ID found for provider: {provider_name}, id: {provider_id}")
 
-        #if SanctionsSpider.page_count > 20000: # only run one page
-        if SanctionsSpider.page_count < (len(SanctionsSpider.ALPHABET) - 1):
+        if SanctionsSpider.page_count > 20000: # only run one page
+        # if SanctionsSpider.page_count < (len(SanctionsSpider.ALPHABET) - 1):
             SanctionsSpider.page_count += 1
             next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
                 f'?alphabet={SanctionsSpider.ALPHABET[SanctionsSpider.page_count]}'
@@ -99,10 +99,25 @@ class SanctionsSpider(scrapy.Spider):
     def parse_sanction_page(self, response):
         item = response.meta.get('item')
 
-        sanctions = response.css('body::text').extract()
-        sanctions_clean = " ".join(sanctions)
-        #sanctions_match = re.search('\S.*', sanctions_clean)
-        #sanctions_clean = None if sanctions_match is None else sanctions_match.group(0)
-        item['sanctions'] = sanctions_clean
+        rows = response.css('form div div table#grdNegativeSanctions > tr')
 
-        yield item
+        if rows:
+            self.info_service_location(item, "SANCTION DATA FOUND!")
+            rows = rows[1:] # remove col headers
+            self.info_service_location(item.copy(), f"NUMBER OF ROWS (minus col headers): {len(rows)}")
+            self.log(rows.extract())
+
+            for count, row in enumerate(rows):
+                self.log(f"Extracting row {count}")
+                item['sanction_id'] = row.css('td:nth-child(1) span::text').extract_first()
+                item['sanction_type'] = row.css('td:nth-child(2) span::text').extract_first()
+                item['sanction_issuance_date'] = row.css('td:nth-child(3) span::text').extract_first()
+                item['sanction_status'] = row.css('td:nth-child(4) span::text').extract_first()
+                yield item
+        else:
+            item['sanctions'] = "No sanctions"
+
+
+    def info_service_location(self, item, message=""):
+        self.log('~~~~~~~~~~~~~~~~~~~~~~~~~')
+        self.log(f"PROV: {item['provider_id']}, {item['service_location']} {item['service_location_id']} | {message}")
