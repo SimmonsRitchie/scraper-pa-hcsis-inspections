@@ -12,6 +12,10 @@ root_logger.setLevel(logging.DEBUG)
 stream_log = StreamHandler()
 root_logger.addHandler(stream_log)
 
+def trim_and_upper(list_of_things):
+    return [thing.upper().strip() for thing in list_of_things]
+
+
 class TestDataIntegrity1(unittest.TestCase):
     """ These tests check whether scraped data matches data on HCSIS website """
 
@@ -23,6 +27,8 @@ class TestDataIntegrity1(unittest.TestCase):
         data_dir = Path("../../scraped_data/")
         data_file_path = list(data_dir.glob('*.csv'))[0] # get first csv in dir
         self.df = pd.read_csv(data_file_path, dtype={'provider_id': 'object', 'service_location_id': 'object'})
+        provider_names = self.df['provider_name'].unique().tolist()
+        self.provider_names = trim_and_upper(provider_names)
 
     def tearDown(self) -> None:
         pass
@@ -64,6 +70,28 @@ class TestDataIntegrity1(unittest.TestCase):
 
             self.assertEqual(assert_item["assert_count"], count)
 
+    def test_service_location_id_correct(self):
+        """Test that service location ID matches service location name"""
+
+        assert_data = [
+            {
+                "provider_id": "401491",
+                "service_location_id": "0007",
+                "service_location": "South Ct",
+
+            }
+        ]
+
+        df = self.df
+        root_logger.debug("TEST: correct service location ID matches name")
+        for assert_item in assert_data:
+            root_logger.debug(f"Testing: {assert_item['provider_id']}, service_location_id: {assert_item['service_location']}")
+            correct_val = assert_item["service_location"]
+            df_test = df[(df["provider_id"] == assert_item["provider_id"]) & (df["service_location_id"] == assert_item[
+                "service_location_id"])]
+            df_test = df_test["service_location"].values[0]
+            root_logger.debug(f"service location is {df_test}")
+            self.assertEqual(df_test, correct_val)
 
     def test_number_of_violations_for_inspection(self):
         """
@@ -156,7 +184,6 @@ class TestDataIntegrity1(unittest.TestCase):
         assert_data = [
             "411713",
             "416911",
-            "4",
             "396604",
             "391308"
         ]
@@ -166,7 +193,7 @@ class TestDataIntegrity1(unittest.TestCase):
         for assert_item in assert_data:
             root_logger.debug(f"Testing: {assert_item}")
             df_test = df[df["provider_id"] == assert_item]
-            test_val = df_test["service_location"].item()
+            test_val = df_test["service_location"].values[0]
             self.assertEqual("No certified locations", test_val)
 
 
@@ -221,26 +248,53 @@ class TestDataIntegrity1(unittest.TestCase):
     def test_provider_names_present(self):
         """ Test that selected provider names are included in data """
 
-        df = self.df
+        # load
         assert_data_path = Path('../assert_data/provider_names.csv')
         df_assert = pd.read_csv(assert_data_path)
-        assert_list = df_assert['provider_names'].to_list()
-        provider_names = df['provider_name'].unique().tolist()
-        provider_names = [name.upper().strip() for name in provider_names]
-        root_logger.debug(f"TEST: {len(assert_list)} provider names are included among scraped data ({len(provider_names)})")
-        root_logger.debug(provider_names)
 
+        # clean
+        assert_list = df_assert['provider_names'].to_list()
+        assert_list = trim_and_upper(assert_list)
+        root_logger.debug(f"TEST: {len(assert_list)} provider names are included in"
+                          f" scraped data ({len(self.provider_names)})")
+        root_logger.debug(self.provider_names)
+
+        # test
         false_list = []
         for assert_item in assert_list:
-            name_check = True if assert_item.upper().strip() in provider_names else False
-            root_logger.debug(f"{(assert_item)} - {name_check}")
+            name_check = True if assert_item in self.provider_names else False
             if not name_check:
                 false_list.append(assert_item)
 
         root_logger.debug(f"Non-matching items: {false_list}")
-        full_name_check = set(assert_list).issubset(provider_names)
+        full_name_check = set(assert_list).issubset(self.provider_names)
         self.assertTrue(full_name_check)
 
+
+    def test_service_coordinators_not_present(self):
+        """ Test that service coordination agencies have been excluded from the scraped data"""
+
+        # load
+        assert_data_path = Path('../assert_data/service_coordination_agencies.csv')
+        df_assert = pd.read_csv(assert_data_path)
+
+        # clean
+        assert_list = df_assert['service_coordination_agency'].to_list()
+        assert_list = trim_and_upper(assert_list)
+        root_logger.debug(f"TEST: {len(assert_list)} service coordinators are NOT included in scraped "
+                          f"data ({len(self.provider_names)})")
+        root_logger.debug(self.provider_names)
+
+        # test
+        false_list = []
+        for assert_item in assert_list:
+            name_check = True if assert_item in self.provider_names else False
+            if not name_check:
+                false_list.append(assert_item)
+
+        root_logger.debug(f"Non-matching items: {false_list}")
+        full_name_check = set(assert_list).issubset(self.provider_names)
+        self.assertFalse(full_name_check)
 
 if __name__ == "__main__":
     unittest.main()
