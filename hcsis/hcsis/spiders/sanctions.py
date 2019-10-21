@@ -108,15 +108,19 @@ class SanctionsSpider(scrapy.Spider):
             self.log(rows.extract())
 
             for count, row in enumerate(rows):
-                self.log(f"Extracting row {count}")
+                self.info_service_location(item, f"Extracting ROW {count}")
                 item['sanction_id'] = row.css('td:nth-child(1) span::text').extract_first()
                 item['sanction_type'] = row.css('td:nth-child(2) span::text').extract_first()
                 item['sanction_issuance_date'] = row.css('td:nth-child(3) span::text').extract_first()
                 item['sanction_status'] = row.css('td:nth-child(4) span::text').extract_first()
                 yield item
         else:
-            item['sanctions'] = "No sanctions"
-
+            self.info_service_location(item, "No sanctions found")
+            item['sanction_id'] = None
+            item['sanction_type'] = None
+            item['sanction_issuance_date'] = None
+            item['sanction_status'] = None
+            yield item
 
     def info_service_location(self, item, message=""):
         self.log('~~~~~~~~~~~~~~~~~~~~~~~~~')
