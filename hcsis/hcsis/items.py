@@ -50,3 +50,4 @@ class SanctionItem(scrapy.Item):
     sanction_type = scrapy.Field()
     sanction_issuance_date = scrapy.Field()
     sanction_status = scrapy.Field()
+    cert_info_tabs_url = scrapy.Field()
