@@ -117,7 +117,7 @@ class SanctionsSpider(scrapy.Spider):
         rows = response.css('form div div table#grdNegativeSanctions > tr')
 
         if rows:
-            self.info_service_location(item, "SANCTION DATA FOUND!")
+            self.info_service_location(item, "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\nSANCTION DATA FOUND!")
             rows = rows[1:] # remove col headers
             self.info_service_location(item.copy(), f"NUMBER OF ROWS (minus col headers): {len(rows)}")
             self.log(rows.extract())
