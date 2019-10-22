@@ -30,11 +30,11 @@ class SanctionsSpider(scrapy.Spider):
             item['provider_name'] = provider_name
             item['provider_id'] = provider_id
 
-            locations_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/certifiedservicelocationslist.aspx?p_varProvrId={provider_id}"
-            item['certified_locations_url'] = locations_page
+            certified_locations_page_url = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/certifiedservicelocationslist.aspx?p_varProvrId={provider_id}"
+            item['certified_locations_url'] = certified_locations_page_url
             self.log(provider_name)
             if provider_id:
-                yield response.follow(locations_page, callback=self.parse_locations_page, meta={'item': item.copy(),
+                yield response.follow(certified_locations_page_url, callback=self.parse_locations_page, meta={'item': item.copy(),
                                                                                                'cert_page_count': 1})
             else:
                 self.log(f">>>>>>> No provider ID found for provider: {provider_name}, id: {provider_id}")
@@ -42,16 +42,18 @@ class SanctionsSpider(scrapy.Spider):
         # if SanctionsSpider.page_count > 20000: # only run one page
         if SanctionsSpider.page_count < (len(SanctionsSpider.ALPHABET) - 1):
             SanctionsSpider.page_count += 1
-            next_page = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
+            next_page_url = f'https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders' \
                 f'?alphabet={SanctionsSpider.ALPHABET[SanctionsSpider.page_count]}'
-            yield response.follow(next_page, callback=self.parse)
+            yield response.follow(next_page_url, callback=self.parse)
 
 
     def parse_locations_page(self, response):
         page = response.meta.get('cert_page_count')
         item = response.meta.get('item')
+
         self.log(f">>>>>>>>>>> PROCESSING PROVIDER: {item['provider_name']}, ID: {item['provider_id']}")
         self.log(f'~~~~~~~~~ PROCESSING CERTIFIED LOCATIONS, PAGE: {page}')
+
         location_rows = response.css('td:nth-child(4) a')
         location_rows = [location_row for location_row in location_rows if not location_row.css('::attr('
                                                                                             'href)').re_first(
@@ -60,33 +62,27 @@ class SanctionsSpider(scrapy.Spider):
             '::text').extract()
 
         if location_rows:
+
             for location in location_rows:
 
                 service_location = location.css('::text').extract_first()
                 service_location_id = location.css('::attr(href)').re_first('\d+$')
-                sanction_page = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/NegativeSanctions.aspx" \
+                location_page_url = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/CertificationInformationTabs" \
+                    f".aspx" \
                     f"?p_varProvrId={item['provider_id']}&ServiceLocationID={service_location_id}"
+
                 item['service_location'] = service_location
                 item['service_location_id'] = service_location_id
                 item['service_location_unique_id'] = f"{item['provider_id']}-{item['service_location_id']}"
                 item['cert_info_tabs_url'] = \
                     f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/CertificationInformationTabs.aspx" \
                         f"?p_varProvrId={item['provider_id']}&ServiceLocationID={service_location_id}"
-                item['sanctions_page_url'] = sanction_page
                 if service_location_id:
-                    yield response.follow(sanction_page, callback=self.parse_sanction_page,
+                    yield response.follow(location_page_url, callback=self.parse_location_page,
                                           meta={'item':item.copy()})
 
         else:
-            self.log("No certified locations")
-            # item['service_location'] = "No certified locations"
-            # list_of_vals = ["service_location_id",
-            #                 "service_location_unique_id", "cert_info_tabs_url",
-            #                 "sanction_id", "sanction_type","sanction_issuance_date","sanction_status"]
-            #
-            # for item_key in list_of_vals:
-            #     item[item_key] = None
-            # yield item
+            self.log(f"{item['provider_name']} {item['provider_id']}: No certified locations found ")
 
         if pagination:
             if page != int(pagination[-1]):
@@ -96,6 +92,23 @@ class SanctionsSpider(scrapy.Spider):
                     '__EVENTTARGET': 'ctl00$SSDPageContent$grdCertifiedServiceLocations',
                     '__EVENTARGUMENT': f'Page${page}',
                 }, callback=self.parse_locations_page, meta={'item': item.copy(), 'cert_page_count': page})
+
+
+    def parse_location_page(self, response):
+        item = response.meta.get('item')
+
+        item['region'] = response.css('#ctl00_SSDPageContent_LabelRegion::text').extract_first().replace('Region: ','')
+        item['county'] = response.css('#ctl00_SSDPageContent_LabelCouty::text').extract_first().replace('County: ','')
+        item['service_specialty'] = response.css('#ctl00_SSDPageContent_LabelSpecialty::text').extract_first().replace(
+            'Service Specialty: ','')
+        item['address'] = response.css('#ctl00_SSDPageContent_LabelAddress::text').extract_first().replace('Address: '
+                                                                                                          '','')
+        sanction_page_url = f"https://www.hcsis.state.pa.us/hcsis-ssd/ssd/odp/pages/NegativeSanctions.aspx" \
+            f"?p_varProvrId={item['provider_id']}&ServiceLocationID={item['service_location_id']}"
+        item['sanctions_page_url'] = sanction_page_url
+
+        yield response.follow(sanction_page_url, callback=self.parse_sanction_page,
+                              meta={'item': item.copy()})
 
 
     def parse_sanction_page(self, response):
@@ -117,12 +130,7 @@ class SanctionsSpider(scrapy.Spider):
                 item['sanction_status'] = row.css('td:nth-child(4) span::text').extract_first()
                 yield item
         else:
-            self.info_service_location(item, "No sanctions found")
-            # item['sanction_id'] = None
-            # item['sanction_type'] = None
-            # item['sanction_issuance_date'] = None
-            # item['sanction_status'] = None
-            # yield item
+            self.log(f"{item['service_location']} {item['service_location_unique_id']}: No sanctions found")
 
     def info_service_location(self, item, message=""):
         self.log('~~~~~~~~~~~~~~~~~~~~~~~~~')
