@@ -121,7 +121,11 @@ class InspectionsSpider(scrapy.Spider):
             yield item
 
         if pagination:
-            if page != int(pagination[-1]):
+            self.log(f"Last page, unclean format: {pagination[-1]}")
+            last_page = int(pagination[-1]) if "..." not in pagination[-1] else int(pagination[-2]) + 1
+            self.log(f"Last page, clean format: {last_page}")
+
+            if page != last_page:
                 self.log('~~~~~~ more pages detected... ')
                 page += 1
                 yield FormRequest.from_response(response, formdata={
