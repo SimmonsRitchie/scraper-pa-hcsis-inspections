@@ -36,7 +36,7 @@ class InspectionsSpider(scrapy.Spider):
             self.log(provider_name)
 
             # Some HCSIS providers are 'Supports Coordination Agencies'. These don't appear to have locations that
-            # are inspected. We only scrape REAL providers
+            # are inspected. We only want to scrape REAL providers
             prov_href = row.css('td a::attr(href)').extract_first()
             provider_type = re.match('.*ServicesSupportDirectory/(?P<provider_type>.*)\?.*',prov_href)
             provider_type = provider_type.group('provider_type')
