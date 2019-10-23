@@ -24,11 +24,14 @@ class TestDataIntegrity1(unittest.TestCase):
         pd.set_option("display.width", 2000)
         pd.set_option("display.max_rows", 2000)
 
-        data_dir = Path("../../scraped_data/")
+        data_dir = Path("../../data_inspections/")
         data_file_path = list(data_dir.glob('*.csv'))[0] # get first csv in dir
         self.df = pd.read_csv(data_file_path, dtype={'provider_id': 'object', 'service_location_id': 'object'})
         provider_names = self.df['provider_name'].unique().tolist()
         self.provider_names = trim_and_upper(provider_names)
+        service_locations = self.df['service_location'].unique().tolist()
+        self.service_locations = trim_and_upper(service_locations)
+
 
     def tearDown(self) -> None:
         pass
@@ -268,6 +271,32 @@ class TestDataIntegrity1(unittest.TestCase):
 
         root_logger.debug(f"Non-matching items: {false_list}")
         full_name_check = set(assert_list).issubset(self.provider_names)
+        self.assertTrue(full_name_check)
+
+
+    def test_service_location_names_present(self):
+        """ Test that selected service provider names are included in data """
+
+        # load
+        assert_data_path = Path('../assert_data/service_locations.csv')
+        df_assert = pd.read_csv(assert_data_path)
+
+        # clean
+        assert_list = df_assert['service_locations'].to_list()
+        assert_list = trim_and_upper(assert_list)
+        root_logger.debug(f"TEST: {len(assert_list)} service locations are included in"
+                          f" scraped data ({len(self.service_locations)})")
+        root_logger.debug(self.service_locations)
+
+        # test
+        false_list = []
+        for assert_item in assert_list:
+            name_check = True if assert_item in self.service_locations else False
+            if not name_check:
+                false_list.append(assert_item)
+
+        root_logger.debug(f"Non-matching items: {false_list}")
+        full_name_check = set(assert_list).issubset(self.service_locations)
         self.assertTrue(full_name_check)
 
 
