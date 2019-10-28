@@ -1,11 +1,8 @@
 ## HCSIS inspection scraper
 
-Python scraper built with Scrapy that scrapes inspection data from DHS's [HCSIS directory](https://www.hcsis
-.state.pa
-.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders?alphabet=A).
+Python scraper built with Scrapy that scrapes inspection data from DHS's [HCSIS directory](https://www.hcsis.state.pa.us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders?alphabet=A).
 
-The website uses Microsoft's [ASP.net framework](https://metacpan
-.org/pod/release/ECARROLL/HTML-TreeBuilderX-ASP_NET-0.09/lib/HTML/TreeBuilderX/ASP_NET.pm).
+The website uses Microsoft's [ASP.net framework](https://metacpan.org/pod/release/ECARROLL/HTML-TreeBuilderX-ASP_NET-0.09/lib/HTML/TreeBuilderX/ASP_NET.pm).
 
 ## Install & run
 
