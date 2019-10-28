@@ -1,10 +1,12 @@
 .idea/
 Pipfile.lock
-hcsis/hcsis/__pycache__/
+__pycache__/
 __pycache__
 hcsis.db
-hcsis/hcsis.db
 *.csv
 *.json
 *.ipynb
-hcsis/scraped_data/
+data_inspections/
+data_sanctions/
+archive/
+logs/
