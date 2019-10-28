@@ -1,7 +1,6 @@
 .idea/
 Pipfile.lock
 __pycache__/
-__pycache__
 hcsis.db
 *.csv
 *.json
