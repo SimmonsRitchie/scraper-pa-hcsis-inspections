@@ -1,6 +1,6 @@
 ## HCSIS inspection scraper
 
-Python scraper built with Scrapy that downloads inspection data files from DHS's [HCSIS directory](https://www.hcsis
+Python scraper built with Scrapy that scrapes inspection data from DHS's [HCSIS directory](https://www.hcsis
 .state.pa
 .us/hcsis-ssd/ServicesSupportDirectory/Providers/GetProviders?alphabet=A).
 
